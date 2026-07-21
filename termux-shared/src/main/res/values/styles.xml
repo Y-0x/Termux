@@ -2,12 +2,12 @@
 <resources>
 
     <!-- BaseToolbar Title text appearance. -->
-    <style name="TextAppearance.Widget.BaseToolbar.Title" parent="TextAppearance.Material3.Title.Large">
+    <style name="TextAppearance.Widget.BaseToolbar.Title" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textSize">14sp</item>
     </style>
 
     <!-- BaseToolbar Subtitle text appearance. -->
-    <style name="TextAppearance.Widget.BaseToolbar.Subtitle" parent="TextAppearance.Material3.Title.Small">
+    <style name="TextAppearance.Widget.BaseToolbar.Subtitle" parent="TextAppearance.Material3.TitleSmall">
         <item name="android:textSize">12sp</item>
     </style>
 
