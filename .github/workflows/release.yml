@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
+      version: ${{ steps.next.outputs.version }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine next version
+        id: next
+        run: |
+          # Try to get the latest semver tag; fall back to versionName in build.gradle
+          LATEST_TAG=$(git tag --list 'v*' | sort -V | tail -1 || true)
+          if [ -n "$LATEST_TAG" ]; then
+            CURRENT="${LATEST_TAG#v}"
+          else
+            CURRENT="$(grep -m1 'versionName' app/build.gradle | sed 's/.*"\(.*\)".*/\1/')"
+          fi
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          NEXT="v${MAJOR}.${MINOR}.$((PATCH + 1))"
+
+          echo "tag=${NEXT}" >> "$GITHUB_OUTPUT"
+          echo "version=${NEXT#v}" >> "$GITHUB_OUTPUT"
+          echo "Current: ${CURRENT} → Next: ${NEXT}"
+
+  build:
+    needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package_variant: [ apt-android-7, apt-android-5 ]
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v6
+
+      - name: Setup java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build debug APKs
+        shell: bash {0}
+        env:
+          PACKAGE_VARIANT: ${{ matrix.package_variant }}
+        run: |
+          exit_on_error() { echo "$1"; exit 1; }
+
+          RELEASE_VERSION_NAME="${{ needs.version.outputs.tag }}"
+          APK_DIR_PATH="./app/build/outputs/apk/debug"
+          APK_VERSION_TAG="${RELEASE_VERSION_NAME}+${PACKAGE_VARIANT}-github-debug"
+          APK_BASENAME_PREFIX="termux-app_${APK_VERSION_TAG}"
+
+          echo "APK_DIR_PATH=${APK_DIR_PATH}" >> $GITHUB_ENV
+          echo "APK_VERSION_TAG=${APK_VERSION_TAG}" >> $GITHUB_ENV
+          echo "APK_BASENAME_PREFIX=${APK_BASENAME_PREFIX}" >> $GITHUB_ENV
+
+          echo "Building APKs for '${APK_VERSION_TAG}'"
+          export TERMUX_APP_VERSION_NAME="${RELEASE_VERSION_NAME#v}"
+          export TERMUX_APK_VERSION_TAG="${APK_VERSION_TAG}"
+          export TERMUX_PACKAGE_VARIANT="${PACKAGE_VARIANT}"
+          if ! ./gradlew assembleDebug; then
+            exit_on_error "Build failed for '${APK_VERSION_TAG}'."
+          fi
+
+          echo "Validating APKs"
+          for abi in universal arm64-v8a armeabi-v7a x86_64 x86; do
+            if ! test -f "${APK_DIR_PATH}/${APK_BASENAME_PREFIX}_${abi}.apk"; then
+              exit_on_error "Missing APK: ${APK_BASENAME_PREFIX}_${abi}.apk"
+            fi
+          done
+
+          echo "Generating sha256sums"
+          (cd "${APK_DIR_PATH}" && sha256sum \
+            "${APK_BASENAME_PREFIX}_universal.apk" \
+            "${APK_BASENAME_PREFIX}_arm64-v8a.apk" \
+            "${APK_BASENAME_PREFIX}_armeabi-v7a.apk" \
+            "${APK_BASENAME_PREFIX}_x86_64.apk" \
+            "${APK_BASENAME_PREFIX}_x86.apk" \
+            > "${APK_BASENAME_PREFIX}_sha256sums")
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-assets
+          path: |
+            ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_*.apk
+            ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_sha256sums
+
+  release:
+    needs: [ version, build ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all release assets
+        uses: actions/download-artifact@v6
+        with:
+          name: release-assets
+          path: release-assets
+
+      - name: Flatten release assets
+        run: |
+          mkdir -p flat
+          find release-assets -type f -exec mv {} flat/ \;
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: ${{ needs.version.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            flat/termux-app_*.apk
+            flat/*_sha256sums
