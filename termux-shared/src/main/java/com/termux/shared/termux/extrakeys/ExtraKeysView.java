@@ -354,7 +354,7 @@ public final class ExtraKeysView extends GridLayout {
 
     /** Set {@link #mLongPressRepeatDelay}. */
     public void setLongPressRepeatDelay(int longPressRepeatDelay) {
-        if (mLongPressRepeatDelay >= MIN_LONG_PRESS__REPEAT_DELAY && mLongPressRepeatDelay <= MAX_LONG_PRESS__REPEAT_DELAY) {
+        if (longPressRepeatDelay >= MIN_LONG_PRESS__REPEAT_DELAY && longPressRepeatDelay <= MAX_LONG_PRESS__REPEAT_DELAY) {
             mLongPressRepeatDelay = longPressRepeatDelay;
         } else {
             mLongPressRepeatDelay = DEFAULT_LONG_PRESS_REPEAT_DELAY;
