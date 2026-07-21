@@ -1,5 +1,16 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_activated="true" android:drawable="@drawable/current_session"/>
-    <item android:state_activated="false" android:drawable="@drawable/session_ripple"/>
+    <item android:state_activated="true">
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorSurfaceVariant" />
+        </shape>
+    </item>
+    <item android:state_activated="false">
+        <ripple xmlns:android="http://schemas.android.com/apk/res/android"
+            android:color="?attr/colorOutline">
+            <item>
+                <color android:color="?attr/colorSurface" />
+            </item>
+        </ripple>
+    </item>
 </selector>

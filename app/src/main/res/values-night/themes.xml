@@ -1,17 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--
-     https://material.io/develop/android/theming/dark
-    -->
 
-    <!-- TermuxActivity DayNight NoActionBar theme. -->
-    <!-- See https://developer.android.com/training/material/theme.html for how to customize the Material theme. -->
-    <!-- NOTE: Cannot use "Light." since it hides the terminal scrollbar on the default black background. -->
+    <!-- TermuxActivity DayNight NoActionBar theme (night). -->
+    <!-- Terminal background stays black in both day and night. -->
     <style name="Theme.TermuxActivity.DayNight.NoActionBar" parent="Theme.TermuxApp.DayNight.NoActionBar">
-        <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/black</item>
-        <item name="colorPrimaryVariant">@color/black</item>
-
+        <!-- Terminal background is always black. -->
         <item name="android:windowBackground">@color/black</item>
 
         <!-- Avoid action mode toolbar pushing down terminal content when
@@ -25,16 +18,16 @@
         <item name="android:windowAllowReturnTransitionOverlap">true</item>
         <item name="android:windowAllowEnterTransitionOverlap">true</item>
 
-        <!-- Left drawer. -->
-        <item name="buttonBarButtonStyle">@style/TermuxActivity.Drawer.ButtonBarStyle.Dark</item>
-        <item name="termuxActivityDrawerBackground">@color/black</item>
-        <item name="termuxActivityDrawerImageTint">@color/white</item>
+        <!-- Left drawer: use Material 3 surface colors. -->
+        <item name="buttonBarButtonStyle">@style/TermuxActivity.Drawer.ButtonBarStyle</item>
+        <item name="termuxActivityDrawerBackground">?attr/colorSurface</item>
+        <item name="termuxActivityDrawerImageTint">?attr/colorOnSurface</item>
 
-        <!-- Extra keys colors. -->
-        <item name="extraKeysButtonTextColor">@color/white</item>
-        <item name="extraKeysButtonActiveTextColor">@color/red_400</item>
-        <item name="extraKeysButtonBackgroundColor">@color/black</item>
-        <item name="extraKeysButtonActiveBackgroundColor">@color/grey_500</item>
+        <!-- Extra keys colors: Material 3 tonal. -->
+        <item name="extraKeysButtonTextColor">?attr/colorOnSurface</item>
+        <item name="extraKeysButtonActiveTextColor">?attr/colorPrimary</item>
+        <item name="extraKeysButtonBackgroundColor">?attr/colorSurface</item>
+        <item name="extraKeysButtonActiveBackgroundColor">?attr/colorSurfaceVariant</item>
     </style>
 
 </resources>
