@@ -50,6 +50,11 @@ public final class TerminalRow {
     /** If this row might contain chars with width != 1, used for deactivating fast path */
     boolean mHasNonOneWidthOrSurrogateChars;
 
+    /** Cached visual-to-logical column mapping for BiDi rendering. Null until computed. */
+    private int[] mVisualToLogical;
+    /** Cached BiDi paragraph level for this row. */
+    private int mBiDiParagraphLevel;
+
     /** Construct a blank row (containing only whitespace, ' ') with a specified style. */
     public TerminalRow(int columns, long style) {
         mColumns = columns;
@@ -146,6 +151,7 @@ public final class TerminalRow {
         Arrays.fill(mStyle, style);
         mSpaceUsed = (short) mColumns;
         mHasNonOneWidthOrSurrogateChars = false;
+        invalidateBiDiMapping();
     }
 
     // https://github.com/steven676/Android-Terminal-Emulator/commit/9a47042620bec87617f0b4f5d50568535668fe26
@@ -153,6 +159,7 @@ public final class TerminalRow {
         if (columnToSet  < 0 || columnToSet >= mStyle.length)
             throw new IllegalArgumentException("TerminalRow.setChar(): columnToSet=" + columnToSet + ", codePoint=" + codePoint + ", style=" + style);
 
+        invalidateBiDiMapping();
         mStyle[columnToSet] = style;
 
         final int newCodePointDisplayWidth = WcWidth.width(codePoint);
@@ -278,6 +285,80 @@ public final class TerminalRow {
 
     public final long getStyle(int column) {
         return mStyle[column];
+    }
+
+    /**
+     * Get the visual-to-logical column mapping for this row.
+     * Computes and caches the mapping using the Unicode Bidirectional Algorithm.
+     *
+     * @return Array where visualToLogical[i] = logical column at visual position i.
+     *         For pure LTR text, this is the identity mapping.
+     */
+    public int[] getVisualToLogicalMapping() {
+        if (mVisualToLogical != null) {
+            return mVisualToLogical;
+        }
+
+        int count = getSpaceUsed();
+        if (count == 0) {
+            mVisualToLogical = new int[0];
+            return mVisualToLogical;
+        }
+
+        com.termux.terminal.BidiReorderer.BidiResult result =
+            com.termux.terminal.BidiReorderer.processLine(mText, count);
+        mVisualToLogical = result.visualToLogical;
+        mBiDiParagraphLevel = result.paragraphLevel;
+        return mVisualToLogical;
+    }
+
+    /**
+     * Get the BiDi paragraph level for this row.
+     * Must be called after {@link #getVisualToLogicalMapping()}.
+     *
+     * @return 0 for LTR, 1 for RTL.
+     */
+    public int getBiDiParagraphLevel() {
+        if (mVisualToLogical == null) {
+            getVisualToLogicalMapping();
+        }
+        return mBiDiParagraphLevel;
+    }
+
+    /**
+     * Convert a visual column to a logical column.
+     *
+     * @param visualColumn The visual column position.
+     * @return The corresponding logical column position.
+     */
+    public int visualToLogical(int visualColumn) {
+        int[] mapping = getVisualToLogicalMapping();
+        if (mapping.length == 0) return 0;
+        if (visualColumn < 0) return 0;
+        if (visualColumn >= mapping.length) return mColumns;
+        return mapping[visualColumn];
+    }
+
+    /**
+     * Convert a logical column to a visual column.
+     *
+     * @param logicalColumn The logical column position.
+     * @return The corresponding visual column position.
+     */
+    public int logicalToVisual(int logicalColumn) {
+        int[] mapping = getVisualToLogicalMapping();
+        if (mapping.length == 0) return 0;
+        for (int i = 0; i < mapping.length; i++) {
+            if (mapping[i] == logicalColumn) return i;
+        }
+        return logicalColumn; // fallback
+    }
+
+    /**
+     * Invalidate the cached BiDi mapping. Must be called whenever the row content changes.
+     */
+    public void invalidateBiDiMapping() {
+        mVisualToLogical = null;
     }
 
 }

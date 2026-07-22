@@ -38,7 +38,9 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import com.termux.terminal.KeyHandler;
+import com.termux.terminal.TerminalBuffer;
 import com.termux.terminal.TerminalEmulator;
+import com.termux.terminal.TerminalRow;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.textselection.TextSelectionCursorController;
 
@@ -544,12 +546,13 @@ public final class TerminalView extends View {
      * @return Array with the column and row.
      */
     public int[] getColumnAndRow(MotionEvent event, boolean relativeToScroll) {
-        int column = (int) (event.getX() / mRenderer.mFontWidth);
+        int visualColumn = (int) (event.getX() / mRenderer.mFontWidth);
         int row = (int) ((event.getY() - mRenderer.mFontLineSpacingAndAscent) / mRenderer.mFontLineSpacing);
         if (relativeToScroll) {
             row += mTopRow;
         }
-        return new int[] { column, row };
+        int logicalColumn = visualToLogicalColumn(visualColumn, row);
+        return new int[] { logicalColumn, row };
     }
 
     /** Send a single mouse event code to the terminal. */
@@ -1032,7 +1035,10 @@ public final class TerminalView extends View {
     }
 
     public int getCursorX(float x) {
-        return (int) (x / mRenderer.mFontWidth);
+        int visualColumn = (int) (x / mRenderer.mFontWidth);
+        // Approximate: use row 0 for visual-to-logical since we don't know the row here.
+        // Selection controller will handle the proper row translation.
+        return visualColumn;
     }
 
     public int getCursorY(float y) {
@@ -1043,11 +1049,54 @@ public final class TerminalView extends View {
         if (cx > mEmulator.mColumns) {
             cx = mEmulator.mColumns;
         }
-        return Math.round(cx * mRenderer.mFontWidth);
+        int visualColumn = logicalToVisualColumn(cx, mEmulator.getCursorRow());
+        return Math.round(visualColumn * mRenderer.mFontWidth);
     }
 
     public int getPointY(int cy) {
         return Math.round((cy - mTopRow) * mRenderer.mFontLineSpacing);
+    }
+
+    /**
+     * Convert a visual column to a logical column for a given row.
+     * For pure LTR text, this is the identity function.
+     */
+    private int visualToLogicalColumn(int visualColumn, int row) {
+        if (mEmulator == null) return visualColumn;
+        TerminalBuffer screen = mEmulator.getScreen();
+        if (screen == null) return visualColumn;
+        int internalRow = screen.externalToInternalRow(row);
+        TerminalRow lineObject = screen.allocateFullLineIfNecessary(internalRow);
+        return lineObject.visualToLogical(visualColumn);
+    }
+
+    /**
+     * Convert a logical column to a visual column for a given row.
+     * For pure LTR text, this is the identity function.
+     */
+    private int logicalToVisualColumn(int logicalColumn, int row) {
+        if (mEmulator == null) return logicalColumn;
+        TerminalBuffer screen = mEmulator.getScreen();
+        if (screen == null) return logicalColumn;
+        int internalRow = screen.externalToInternalRow(row);
+        TerminalRow lineObject = screen.allocateFullLineIfNecessary(internalRow);
+        return lineObject.logicalToVisual(logicalColumn);
+    }
+
+    /**
+     * Convert a visual column to a logical column for selection operations.
+     * Used by TextSelectionCursorController.
+     */
+    public int visualToLogicalColumnForSelection(int visualColumn, int row) {
+        return visualToLogicalColumn(visualColumn, row);
+    }
+
+    /**
+     * Convert a logical column to a visual column for selection operations.
+     * Used by TextSelectionCursorController for positioning.
+     */
+    public int logicalToVisualColumnForSelection(int logicalColumn, int row) {
+        return logicalToVisualColumn(logicalColumn, row);
     }
 
     public int getTopRow() {

@@ -192,8 +192,11 @@ public class TextSelectionCursorController implements CursorController {
 
             @Override
             public void onGetContentRect(ActionMode mode, View view, Rect outRect) {
-                int x1 = Math.round(mSelX1 * terminalView.mRenderer.getFontWidth());
-                int x2 = Math.round(mSelX2 * terminalView.mRenderer.getFontWidth());
+                // Convert logical selection columns to visual for pixel positions
+                int visualX1 = terminalView.logicalToVisualColumnForSelection(mSelX1, mSelY1);
+                int visualX2 = terminalView.logicalToVisualColumnForSelection(mSelX2, mSelY2);
+                int x1 = Math.round(visualX1 * terminalView.mRenderer.getFontWidth());
+                int x2 = Math.round(visualX2 * terminalView.mRenderer.getFontWidth());
                 int y1 = Math.round((mSelY1 - 1 - terminalView.getTopRow()) * terminalView.mRenderer.getFontLineSpacing());
                 int y2 = Math.round((mSelY2 + 1 - terminalView.getTopRow()) * terminalView.mRenderer.getFontLineSpacing());
 
@@ -219,8 +222,10 @@ public class TextSelectionCursorController implements CursorController {
         TerminalBuffer screen = terminalView.mEmulator.getScreen();
         final int scrollRows = screen.getActiveRows() - terminalView.mEmulator.mRows;
         if (handle == mStartHandle) {
-            mSelX1 = terminalView.getCursorX(x);
+            int visualX = terminalView.getCursorX(x);
             mSelY1 = terminalView.getCursorY(y);
+            // Convert visual column to logical column
+            mSelX1 = terminalView.visualToLogicalColumnForSelection(visualX, mSelY1);
             if (mSelX1 < 0) {
                 mSelX1 = 0;
             }
@@ -261,8 +266,10 @@ public class TextSelectionCursorController implements CursorController {
             mSelX1 = getValidCurX(screen, mSelY1, mSelX1);
 
         } else {
-            mSelX2 = terminalView.getCursorX(x);
+            int visualX = terminalView.getCursorX(x);
             mSelY2 = terminalView.getCursorY(y);
+            // Convert visual column to logical column
+            mSelX2 = terminalView.visualToLogicalColumnForSelection(visualX, mSelY2);
             if (mSelX2 < 0) {
                 mSelX2 = 0;
             }
