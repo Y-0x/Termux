@@ -99,7 +99,7 @@ public class TermuxNotificationUtils {
         }
 
         // Set background color for small notification icon
-        builder.setColor(ThemeUtils.getSystemAttrColor(context, com.google.android.material.R.attr.colorPrimary));
+        builder.setColor(ThemeUtils.getSystemAttrColor(termuxPackageContext, com.google.android.material.R.attr.colorPrimary));
 
         // Dismiss on click
         builder.setAutoCancel(true);

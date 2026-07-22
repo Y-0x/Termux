@@ -1,7 +1,7 @@
 package com.termux.shared.termux.interact;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.content.DialogInterface;
 import android.text.Selection;
