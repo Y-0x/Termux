@@ -10,11 +10,10 @@ import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -24,34 +23,35 @@ import com.termux.terminal.TerminalSession;
 
 import java.util.List;
 
-public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession> implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
+public class TermuxSessionsListViewController extends RecyclerView.Adapter<TermuxSessionsListViewController.SessionViewHolder> {
 
     final TermuxActivity mActivity;
+    final List<TermuxSession> mSessionList;
 
     final StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
     final StyleSpan italicSpan = new StyleSpan(Typeface.ITALIC);
 
     public TermuxSessionsListViewController(TermuxActivity activity, List<TermuxSession> sessionList) {
-        super(activity.getApplicationContext(), R.layout.item_terminal_sessions_list, sessionList);
         this.mActivity = activity;
+        this.mSessionList = sessionList;
+    }
+
+    @NonNull
+    @Override
+    public SessionViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(mActivity).inflate(R.layout.item_terminal_sessions_list, parent, false);
+        return new SessionViewHolder(view);
     }
 
     @SuppressLint("SetTextI18n")
-    @NonNull
     @Override
-    public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-        View sessionRowView = convertView;
-        if (sessionRowView == null) {
-            LayoutInflater inflater = mActivity.getLayoutInflater();
-            sessionRowView = inflater.inflate(R.layout.item_terminal_sessions_list, parent, false);
-        }
+    public void onBindViewHolder(@NonNull SessionViewHolder holder, int position) {
+        TextView sessionTitleView = holder.sessionTitleView;
 
-        TextView sessionTitleView = sessionRowView.findViewById(R.id.session_title);
-
-        TerminalSession sessionAtRow = getItem(position).getTerminalSession();
+        TerminalSession sessionAtRow = mSessionList.get(position).getTerminalSession();
         if (sessionAtRow == null) {
             sessionTitleView.setText("null session");
-            return sessionRowView;
+            return;
         }
 
         String name = sessionAtRow.mSessionName;
@@ -78,21 +78,31 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         int defaultColor = ThemeUtils.getTextColorPrimary(mActivity);
         int color = sessionRunning || sessionAtRow.getExitStatus() == 0 ? defaultColor : ThemeUtils.getSystemAttrColor(mActivity, android.R.attr.colorError);
         sessionTitleView.setTextColor(color);
-        return sessionRowView;
+
+        holder.itemView.setOnClickListener(v -> {
+            TermuxSession clickedSession = mSessionList.get(holder.getAdapterPosition());
+            mActivity.getTermuxTerminalSessionClient().setCurrentSession(clickedSession.getTerminalSession());
+            mActivity.getDrawer().closeDrawers();
+        });
+
+        holder.itemView.setOnLongClickListener(v -> {
+            final TermuxSession selectedSession = mSessionList.get(holder.getAdapterPosition());
+            mActivity.getTermuxTerminalSessionClient().renameSession(selectedSession.getTerminalSession());
+            return true;
+        });
     }
 
     @Override
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        TermuxSession clickedSession = getItem(position);
-        mActivity.getTermuxTerminalSessionClient().setCurrentSession(clickedSession.getTerminalSession());
-        mActivity.getDrawer().closeDrawers();
+    public int getItemCount() {
+        return mSessionList.size();
     }
 
-    @Override
-    public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-        final TermuxSession selectedSession = getItem(position);
-        mActivity.getTermuxTerminalSessionClient().renameSession(selectedSession.getTerminalSession());
-        return true;
-    }
+    static class SessionViewHolder extends RecyclerView.ViewHolder {
+        final TextView sessionTitleView;
 
+        SessionViewHolder(@NonNull View itemView) {
+            super(itemView);
+            sessionTitleView = itemView.findViewById(R.id.session_title);
+        }
+    }
 }

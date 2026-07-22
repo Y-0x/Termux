@@ -22,7 +22,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
@@ -63,6 +63,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
 import java.util.Arrays;
@@ -498,11 +500,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void setTermuxSessionsListView() {
-        ListView termuxSessionsListView = findViewById(R.id.terminal_sessions_list);
+        RecyclerView termuxSessionsListView = findViewById(R.id.terminal_sessions_list);
         mTermuxSessionListViewController = new TermuxSessionsListViewController(this, mTermuxService.getTermuxSessions());
+        termuxSessionsListView.setLayoutManager(new LinearLayoutManager(this));
         termuxSessionsListView.setAdapter(mTermuxSessionListViewController);
-        termuxSessionsListView.setOnItemClickListener(mTermuxSessionListViewController);
-        termuxSessionsListView.setOnItemLongClickListener(mTermuxSessionListViewController);
     }
 
 
