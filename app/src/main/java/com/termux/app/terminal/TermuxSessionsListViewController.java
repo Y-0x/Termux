@@ -80,17 +80,17 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         sessionTitleView.setTextColor(color);
 
         holder.itemView.setOnClickListener(v -> {
-            int position = holder.getAdapterPosition();
-            if (position == RecyclerView.NO_POSITION || position < 0 || position >= mSessionList.size()) return;
-            TermuxSession clickedSession = mSessionList.get(position);
+            int adapterPos = holder.getAdapterPosition();
+            if (adapterPos == RecyclerView.NO_POSITION || adapterPos < 0 || adapterPos >= mSessionList.size()) return;
+            TermuxSession clickedSession = mSessionList.get(adapterPos);
             mActivity.getTermuxTerminalSessionClient().setCurrentSession(clickedSession.getTerminalSession());
             mActivity.getDrawer().closeDrawers();
         });
 
         holder.itemView.setOnLongClickListener(v -> {
-            int position = holder.getAdapterPosition();
-            if (position == RecyclerView.NO_POSITION || position < 0 || position >= mSessionList.size()) return true;
-            final TermuxSession selectedSession = mSessionList.get(position);
+            int adapterPos = holder.getAdapterPosition();
+            if (adapterPos == RecyclerView.NO_POSITION || adapterPos < 0 || adapterPos >= mSessionList.size()) return true;
+            final TermuxSession selectedSession = mSessionList.get(adapterPos);
             mActivity.getTermuxTerminalSessionClient().renameSession(selectedSession.getTerminalSession());
             return true;
         });
