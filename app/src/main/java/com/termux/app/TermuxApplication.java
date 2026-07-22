@@ -15,6 +15,7 @@ import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 import com.termux.shared.termux.shell.am.TermuxAmSocketServer;
 import com.termux.shared.termux.shell.TermuxShellManager;
+import com.google.android.material.color.DynamicColors;
 import com.termux.shared.termux.theme.TermuxThemeUtils;
 
 public class TermuxApplication extends Application {
@@ -45,6 +46,9 @@ public class TermuxApplication extends Application {
 
         // Set NightMode.APP_NIGHT_MODE
         TermuxThemeUtils.setAppNightMode(properties.getNightMode());
+
+        // Enable Material 3 Dynamic Colors (wallpaper-based theming on Android 12+)
+        DynamicColors.applyToActivitiesIfAvailable(this);
 
         // Check and create termux files directory. If failed to access it like in case of secondary
         // user or external sd card installation, then don't run files directory related code
