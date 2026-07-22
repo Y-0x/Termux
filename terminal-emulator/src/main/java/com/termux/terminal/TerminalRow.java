@@ -75,7 +75,6 @@ public final class TerminalRow {
             char sourceChar = sourceChars[i];
             int codePoint = Character.isHighSurrogate(sourceChar) ? Character.toCodePoint(sourceChar, sourceChars[++i]) : sourceChar;
             if (startingFromSecondHalfOfWideChar) {
-                // Just treat copying second half of wide char as copying whitespace.
                 codePoint = ' ';
                 startingFromSecondHalfOfWideChar = false;
             }
@@ -87,6 +86,7 @@ public final class TerminalRow {
             }
             setChar(destinationX, codePoint, line.getStyle(sourceX1));
         }
+        invalidateBiDiMapping();
     }
 
     public int getSpaceUsed() {
@@ -299,14 +299,56 @@ public final class TerminalRow {
             return mVisualToLogical;
         }
 
-        int count = getSpaceUsed();
-        if (count == 0) {
+        int spaceUsed = getSpaceUsed();
+        if (spaceUsed == 0) {
             mVisualToLogical = new int[0];
             return mVisualToLogical;
         }
 
+        // Convert char[] to column-level code points and widths for BidiReorderer
+        int columns = mColumns;
+        int[] codePoints = new int[columns];
+        int[] widths = new int[columns];
+        int col = 0;
+        for (int i = 0; i < spaceUsed && col < columns; ) {
+            char c = mText[i];
+            boolean isHigh = Character.isHighSurrogate(c);
+            int cp = isHigh && i + 1 < spaceUsed ? Character.toCodePoint(c, mText[i + 1]) : c;
+            int w = WcWidth.width(cp);
+            int charLen = isHigh ? 2 : 1;
+            if (w > 0) {
+                codePoints[col] = cp;
+                widths[col] = w;
+                col++;
+                i += charLen;
+                // Skip combining characters after base
+                while (i < spaceUsed) {
+                    char nc = mText[i];
+                    boolean nHigh = Character.isHighSurrogate(nc);
+                    int ncp = nHigh && i + 1 < spaceUsed ? Character.toCodePoint(nc, mText[i + 1]) : nc;
+                    if (WcWidth.width(ncp) <= 0) {
+                        i += nHigh ? 2 : 1;
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                // Zero-width character at column boundary (shouldn't normally happen)
+                codePoints[col] = cp;
+                widths[col] = 1;
+                col++;
+                i += charLen;
+            }
+        }
+        // Fill remaining columns with spaces
+        while (col < columns) {
+            codePoints[col] = ' ';
+            widths[col] = 1;
+            col++;
+        }
+
         com.termux.terminal.BidiReorderer.BidiResult result =
-            com.termux.terminal.BidiReorderer.processLine(mText, count);
+            com.termux.terminal.BidiReorderer.processLine(codePoints, columns, widths);
         mVisualToLogical = result.visualToLogical;
         mBiDiParagraphLevel = result.paragraphLevel;
         return mVisualToLogical;

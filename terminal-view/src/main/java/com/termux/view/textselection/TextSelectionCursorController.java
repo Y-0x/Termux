@@ -197,8 +197,10 @@ public class TextSelectionCursorController implements CursorController {
                 int visualX2 = terminalView.logicalToVisualColumnForSelection(mSelX2, mSelY2);
                 int x1 = Math.round(visualX1 * terminalView.mRenderer.getFontWidth());
                 int x2 = Math.round(visualX2 * terminalView.mRenderer.getFontWidth());
-                int y1 = Math.round((mSelY1 - 1 - terminalView.getTopRow()) * terminalView.mRenderer.getFontLineSpacing());
-                int y2 = Math.round((mSelY2 + 1 - terminalView.getTopRow()) * terminalView.mRenderer.getFontLineSpacing());
+                int fontLineSpacing = terminalView.mRenderer.getFontLineSpacing();
+                int fontLineSpacingAndAscent = terminalView.mRenderer.mFontLineSpacingAndAscent;
+                int y1 = Math.round((mSelY1 - 1 - terminalView.getTopRow()) * fontLineSpacing) + fontLineSpacingAndAscent;
+                int y2 = Math.round((mSelY2 + 1 - terminalView.getTopRow()) * fontLineSpacing) + fontLineSpacingAndAscent;
 
                 if (x1 > x2) {
                     int tmp = x1;
