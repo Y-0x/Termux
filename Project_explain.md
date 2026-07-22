@@ -1472,6 +1472,20 @@ The following improvements have been implemented as part of the Material 3 migra
 - ✅ RecyclerView (replaced deprecated ListView)
 - ✅ Cleaned up hardcoded drawable tints
 
+## Completed Improvements (Bug Fixes)
+
+- ✅ Critical BiDi char-vs-column mismatch (column-based processing)
+- ✅ BiDi L1 rule fix (trailing whitespace reset)
+- ✅ BiDi Arabic/Syriac/Thaana combining mark classification
+- ✅ BiDi override handling on stack pop
+- ✅ TerminalRow.copyInterval() BiDi cache invalidation
+- ✅ TerminalView.getCursorY() hardcoded pixel value
+- ✅ TermuxSessionsListViewController getAdapterPosition() crash
+- ✅ TermuxActivity RECEIVER_NOT_EXPORTED for API 34+
+- ✅ TextSelectionCursorController font ascent offset
+- ✅ Dead TermuxAlertDialogStyle removed
+- ✅ CI AlertDialog type mismatches
+
 ---
 
 # Git History Analysis
@@ -1550,6 +1564,48 @@ The following improvements have been implemented as part of the Material 3 migra
 - **Why:** RecyclerView is the modern replacement with better performance and animation support.
 
 ---
+
+### Commit: `82546d07` — docs: update Project_explain.md with M3 migration details
+
+- **Date:** 2026-07-22
+- **Change:** Updated Project_explain.md with Git History Analysis, Architectural Milestones, and Possible Improvements sections. Documented all M3 migration commits and the RTL/BiDi implementation.
+
+### Commit: `81d82839` — feat(bidi): implement Unicode Bidirectional Algorithm (UAX #9)
+
+- **Date:** 2026-07-22
+- **Files:** 5 new/modified files
+- **Change:** Full UAX #9 BiDi algorithm for right-to-left text support (Arabic, Hebrew). Creates `BidiReorderer.java`, adds BiDi cache to `TerminalRow.java`, integrates visual reordering into `TerminalRenderer.java`, adds visual-to-logical translation for touch input in `TerminalView.java` and `TextSelectionCursorController.java`.
+- **Why:** Enables correct rendering and interaction with RTL text in terminal output.
+
+### Commit: `30b668d2` — fix(ci): correct AlertDialog type mismatches for CI builds
+
+- **Date:** 2026-07-22
+- **Files:** 4 files
+- **Change:** Fixed `android.app.AlertDialog` → `androidx.appcompat.app.AlertDialog` type mismatches in MessageDialogUtils, TextInputDialogUtils, TermuxNotificationUtils, and TermuxTerminalViewClient.
+
+### Commit: `b34b3b41` — fix(bidi): correct int-to-byte lossy conversions in BidiReorderer
+
+- **Date:** 2026-07-22
+- **Files:** `terminal-emulator/src/main/java/com/termux/terminal/BidiReorderer.java`
+- **Change:** Fixed 5 instances of implicit int-to-byte conversion that caused compiler errors in CI.
+
+### Commit: `733d3219` — fix: critical BiDi bug fixes and codebase bug fixes
+
+- **Date:** 2026-07-22
+- **Files:** 7 files (+317, -471)
+- **Change:** Major bug fix batch:
+  - **BidiReorderer rewrite:** Changed from char-based to column-based processing to prevent `ArrayIndexOutOfBoundsException` with CJK wide characters. Each terminal column now has one code point fed to the algorithm.
+  - **L1 rule fix:** Now passes `origTypes` to `reorder()` for proper trailing whitespace reset instead of comparing levels against character type constants.
+  - **Arabic combining mark classification:** Fixed catch-all AL ranges overriding specific NSM ranges by reordering the if-else chain.
+  - **Syriac/Thaana combining marks:** Fixed misclassification as AL by catch-all ranges.
+  - **TerminalRow.copyInterval():** Added `invalidateBiDiMapping()` after copying content.
+  - **TerminalRow.getVisualToLogicalMapping():** Rewritten to convert `char[]` to column-level `codePoints`+`widths` for the new BidiReorderer API.
+  - **TerminalView.getCursorY():** Replaced hardcoded `40` with `mRenderer.mFontLineSpacingAndAscent` for accurate touch coordinates.
+  - **TermuxSessionsListViewController:** Added `NO_POSITION` bounds checks for `getAdapterPosition()` to prevent `IndexOutOfBoundsException`.
+  - **TermuxActivity:** Added `RECEIVER_NOT_EXPORTED` flag for `registerReceiver()` on API 34+ (Android 14 security requirement).
+  - **TextSelectionCursorController.onGetContentRect():** Added font ascent offset to y-coordinates for proper toolbar positioning.
+  - **styles.xml:** Removed dead `TermuxAlertDialogStyle` (defined but never referenced).
+- **Why:** Critical correctness and stability fixes across BiDi rendering, touch handling, and API compatibility.
 
 ## Previous Commits
 
@@ -1714,8 +1770,11 @@ This adds automated release pipeline that was previously manual or handled by ex
 - **401bbe54** — Notification NPE on Android 6
 - **30ebb2de** — Termcap key mapping inversion
 - **3f0dec35** — Deprecated manifest attribute
+- **30b668d2** — CI AlertDialog type mismatches
+- **b34b3b41** — BiDi int-to-byte lossy conversions
+- **733d3219** — Critical BiDi + codebase bug fixes (10 bugs fixed)
 
-These span 5 months (Feb-Jul 2026) and address issues across different layers: UI, JNI, notifications, key handling, and build configuration.
+These span 5 months (Feb-Jul 2026) and address issues across different layers: UI, JNI, notifications, key handling, build configuration, BiDi rendering, touch handling, and API compatibility.
 
 ## Architectural Milestones
 
@@ -1723,9 +1782,11 @@ These span 5 months (Feb-Jul 2026) and address issues across different layers: U
 
 2. **Material 3 migration** — The most significant recent architectural change, modernizing the entire UI layer. **Now complete** with Dynamic Color support, M3 typography, MaterialAlertDialogBuilder, ViewPager2, and RecyclerView.
 
-3. **Bootstrap system** — The native ZIP embedding approach (assembly `.incbin`) is a unique and efficient solution for providing the initial Linux environment.
+3. **RTL/BiDi support** — Full Unicode Bidirectional Algorithm (UAX #9) implementation enabling correct rendering and interaction with Arabic, Hebrew, and other RTL text. Uses column-based processing with visual-to-logical mapping for accurate touch handling.
 
-4. **Plugin architecture** — The shared library (`termux-shared`) enables 6 companion apps to share code, constants, and UI components.
+4. **Bootstrap system** — The native ZIP embedding approach (assembly `.incbin`) is a unique and efficient solution for providing the initial Linux environment.
+
+5. **Plugin architecture** — The shared library (`termux-shared`) enables 6 companion apps to share code, constants, and UI components.
 
 ## Future Risks
 
