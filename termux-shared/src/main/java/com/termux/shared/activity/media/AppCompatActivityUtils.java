@@ -6,7 +6,7 @@ import androidx.annotation.StyleRes;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
-import androidx.appcompat.widget.Toolbar;
+import com.google.android.material.appbar.MaterialToolbar;
 
 import com.termux.shared.logger.Logger;
 import com.termux.shared.theme.NightMode;
@@ -44,7 +44,7 @@ public class AppCompatActivityUtils {
      * @param id The toolbar resource id.
      */
     public static void setToolbar(@NonNull AppCompatActivity activity, @IdRes int id) {
-        Toolbar toolbar = activity.findViewById(id);
+        MaterialToolbar toolbar = activity.findViewById(id);
         if (toolbar != null)
             activity.setSupportActionBar(toolbar);
     }
@@ -58,7 +58,7 @@ public class AppCompatActivityUtils {
      */
     public static void setToolbarTitle(@NonNull AppCompatActivity activity, @IdRes int id,
                                        String title, @StyleRes int titleAppearance) {
-        Toolbar toolbar = activity.findViewById(id);
+        MaterialToolbar toolbar = activity.findViewById(id);
         if (toolbar != null) {
             //toolbar.setTitle(title); // Does not work
             final ActionBar actionBar = activity.getSupportActionBar();
@@ -85,7 +85,7 @@ public class AppCompatActivityUtils {
      */
     public static void setToolbarSubtitle(@NonNull AppCompatActivity activity, @IdRes int id,
                                           String subtitle, @StyleRes int subtitleAppearance) {
-        Toolbar toolbar = activity.findViewById(id);
+        MaterialToolbar toolbar = activity.findViewById(id);
         if (toolbar != null) {
             toolbar.setSubtitle(subtitle);
             try {

@@ -22,7 +22,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
+import com.google.android.material.appbar.MaterialToolbar;
 
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.logger.Logger;
@@ -73,7 +73,7 @@ public class TextIOActivity extends AppCompatActivity {
         mTextIOTextLinearLayout = findViewById(R.id.text_io_text_linear_layout);
         mTextIOTextCharacterUsage = findViewById(R.id.text_io_text_character_usage);
 
-        Toolbar toolbar = findViewById(R.id.toolbar);
+        MaterialToolbar toolbar = findViewById(R.id.toolbar);
         if (toolbar != null) {
             setSupportActionBar(toolbar);
         }
