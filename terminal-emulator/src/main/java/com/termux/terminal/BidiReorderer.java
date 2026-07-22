@@ -529,7 +529,7 @@ public final class BidiReorderer {
                             }
                         }
                     }
-                    levels[i] = levelStack[stackTop];
+                    levels[i] = (byte) levelStack[stackTop];
                     types[i] = BN; // Rule X9: convert to BN
                     break;
 
@@ -537,7 +537,7 @@ public final class BidiReorderer {
                     if (stackTop > 0) {
                         stackTop--;
                     }
-                    levels[i] = levelStack[stackTop];
+                    levels[i] = (byte) levelStack[stackTop];
                     types[i] = BN; // Rule X9
                     break;
 
@@ -545,11 +545,11 @@ public final class BidiReorderer {
                     if (stackTop > 0) {
                         stackTop--;
                     }
-                    levels[i] = levelStack[stackTop];
+                    levels[i] = (byte) levelStack[stackTop];
                     break;
 
                 default:
-                    levels[i] = levelStack[stackTop];
+                    levels[i] = (byte) levelStack[stackTop];
                     if (overrideStatus == R) {
                         types[i] = R;
                     }
@@ -770,7 +770,7 @@ public final class BidiReorderer {
         // Reset trailing whitespace/separator levels
         for (int i = length - 1; i >= 0; i--) {
             if (levels[i] == BN || levels[i] == S || levels[i] == WS || levels[i] == B || levels[i] == PDF || levels[i] == LRE || levels[i] == RLE || levels[i] == LRO || levels[i] == RLO || levels[i] == LRI || levels[i] == RLI || levels[i] == FSI || levels[i] == PDI) {
-                levels[i] = paragraphLevel;
+                levels[i] = (byte) paragraphLevel;
             } else {
                 break;
             }
