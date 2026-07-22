@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Markdown code background (night) - semi-transparent white for dark backgrounds -->
+    <color name="background_markdown_code_inline">#1FFFFFFF</color>
+    <color name="background_markdown_code_block">#0FFFFFFF</color>
+</resources>
