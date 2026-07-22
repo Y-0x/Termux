@@ -6,8 +6,8 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 
 import androidx.annotation.NonNull;
-import androidx.viewpager.widget.PagerAdapter;
-import androidx.viewpager.widget.ViewPager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -16,7 +16,10 @@ import com.termux.terminal.TerminalSession;
 
 public class TerminalToolbarViewPager {
 
-    public static class PageAdapter extends PagerAdapter {
+    private static final int VIEW_TYPE_EXTRA_KEYS = 0;
+    private static final int VIEW_TYPE_TEXT_INPUT = 1;
+
+    public static class PageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
         final TermuxActivity mActivity;
         String mSavedTextInput;
@@ -27,37 +30,45 @@ public class TerminalToolbarViewPager {
         }
 
         @Override
-        public int getCount() {
+        public int getItemCount() {
             return 2;
         }
 
         @Override
-        public boolean isViewFromObject(@NonNull View view, @NonNull Object object) {
-            return view == object;
+        public int getItemViewType(int position) {
+            return position == 0 ? VIEW_TYPE_EXTRA_KEYS : VIEW_TYPE_TEXT_INPUT;
         }
 
         @NonNull
         @Override
-        public Object instantiateItem(@NonNull ViewGroup collection, int position) {
+        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             LayoutInflater inflater = LayoutInflater.from(mActivity);
-            View layout;
-            if (position == 0) {
-                layout = inflater.inflate(R.layout.view_terminal_toolbar_extra_keys, collection, false);
-                ExtraKeysView extraKeysView = (ExtraKeysView) layout;
+            if (viewType == VIEW_TYPE_EXTRA_KEYS) {
+                View view = inflater.inflate(R.layout.view_terminal_toolbar_extra_keys, parent, false);
+                return new ExtraKeysViewHolder(view);
+            } else {
+                View view = inflater.inflate(R.layout.view_terminal_toolbar_text_input, parent, false);
+                return new TextInputViewHolder(view);
+            }
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            if (holder instanceof ExtraKeysViewHolder) {
+                ExtraKeysViewHolder eh = (ExtraKeysViewHolder) holder;
+                ExtraKeysView extraKeysView = (ExtraKeysView) eh.itemView;
                 extraKeysView.setExtraKeysViewClient(mActivity.getTermuxTerminalExtraKeys());
                 extraKeysView.setButtonTextAllCaps(mActivity.getProperties().shouldExtraKeysTextBeAllCaps());
                 mActivity.setExtraKeysView(extraKeysView);
                 extraKeysView.reload(mActivity.getTermuxTerminalExtraKeys().getExtraKeysInfo(),
                     mActivity.getTerminalToolbarDefaultHeight());
 
-                // apply extra keys fix if enabled in prefs
                 if (mActivity.getProperties().isUsingFullScreen() && mActivity.getProperties().isUsingFullScreenWorkAround()) {
                     FullScreenWorkAround.apply(mActivity);
                 }
-
-            } else {
-                layout = inflater.inflate(R.layout.view_terminal_toolbar_text_input, collection, false);
-                final EditText editText = layout.findViewById(R.id.terminal_toolbar_text_input);
+            } else if (holder instanceof TextInputViewHolder) {
+                TextInputViewHolder th = (TextInputViewHolder) holder;
+                final EditText editText = th.editText;
 
                 if (mSavedTextInput != null) {
                     editText.setText(mSavedTextInput);
@@ -79,25 +90,31 @@ public class TerminalToolbarViewPager {
                     return true;
                 });
             }
-            collection.addView(layout);
-            return layout;
         }
 
-        @Override
-        public void destroyItem(@NonNull ViewGroup collection, int position, @NonNull Object view) {
-            collection.removeView((View) view);
+        static class ExtraKeysViewHolder extends RecyclerView.ViewHolder {
+            ExtraKeysViewHolder(@NonNull View itemView) {
+                super(itemView);
+            }
         }
 
+        static class TextInputViewHolder extends RecyclerView.ViewHolder {
+            final EditText editText;
+
+            TextInputViewHolder(@NonNull View itemView) {
+                super(itemView);
+                editText = itemView.findViewById(R.id.terminal_toolbar_text_input);
+            }
+        }
     }
 
 
-
-    public static class OnPageChangeListener extends ViewPager.SimpleOnPageChangeListener {
+    public static class OnPageChangeListener extends ViewPager2.OnPageChangeCallback {
 
         final TermuxActivity mActivity;
-        final ViewPager mTerminalToolbarViewPager;
+        final ViewPager2 mTerminalToolbarViewPager;
 
-        public OnPageChangeListener(TermuxActivity activity, ViewPager viewPager) {
+        public OnPageChangeListener(TermuxActivity activity, ViewPager2 viewPager) {
             this.mActivity = activity;
             this.mTerminalToolbarViewPager = viewPager;
         }
