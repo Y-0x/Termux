@@ -18,6 +18,7 @@ import com.termux.shared.file.filesystem.FileType;
 import com.termux.shared.errors.Errno;
 import com.termux.shared.errors.Error;
 import com.termux.shared.termux.TermuxConstants;
+import com.termux.shared.theme.ThemeUtils;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_SERVICE;
 import com.termux.shared.file.FileUtils;
@@ -272,7 +273,7 @@ public class RunCommandService extends Service {
         builder.setSmallIcon(R.drawable.ic_service_notification);
 
         // Set background color for small notification icon
-        builder.setColor(0xFF607D8B);
+        builder.setColor(ThemeUtils.getSystemAttrColor(this, com.google.android.material.R.attr.colorPrimary));
 
         return builder.build();
     }

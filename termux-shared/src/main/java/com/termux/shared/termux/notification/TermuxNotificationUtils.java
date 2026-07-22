@@ -14,6 +14,7 @@ import com.termux.shared.notification.NotificationUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants;
 import com.termux.shared.termux.TermuxConstants;
+import com.termux.shared.theme.ThemeUtils;
 
 public class TermuxNotificationUtils {
     /**
@@ -98,7 +99,7 @@ public class TermuxNotificationUtils {
         }
 
         // Set background color for small notification icon
-        builder.setColor(0xFF607D8B);
+        builder.setColor(ThemeUtils.getSystemAttrColor(context, com.google.android.material.R.attr.colorPrimary));
 
         // Dismiss on click
         builder.setAutoCancel(true);

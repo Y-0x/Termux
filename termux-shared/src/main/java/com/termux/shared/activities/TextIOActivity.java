@@ -28,6 +28,7 @@ import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.R;
 import com.termux.shared.models.TextIOInfo;
+import com.termux.shared.theme.ThemeUtils;
 import com.termux.shared.view.KeyboardUtils;
 
 import org.jetbrains.annotations.NotNull;
@@ -130,7 +131,8 @@ public class TextIOActivity extends AppCompatActivity {
             mTextIOLabel.setText(mTextIOInfo.getLabel());
             mTextIOLabel.setFilters(new InputFilter[] { new InputFilter.LengthFilter(TextIOInfo.LABEL_SIZE_LIMIT_IN_BYTES) });
             mTextIOLabel.setTextSize(mTextIOInfo.getLabelSize());
-            mTextIOLabel.setTextColor(mTextIOInfo.getLabelColor());
+            int labelColor = mTextIOInfo.getLabelColor();
+            mTextIOLabel.setTextColor(labelColor != 0 ? labelColor : ThemeUtils.getTextColorPrimary(this));
             mTextIOLabel.setTypeface(Typeface.create(mTextIOInfo.getLabelTypeFaceFamily(), mTextIOInfo.getLabelTypeFaceStyle()));
         }
 
@@ -155,7 +157,8 @@ public class TextIOActivity extends AppCompatActivity {
         mTextIOText.setText(mTextIOInfo.getText());
         mTextIOText.setFilters(new InputFilter[] { new InputFilter.LengthFilter(mTextIOInfo.getTextLengthLimit()) });
         mTextIOText.setTextSize(mTextIOInfo.getTextSize());
-        mTextIOText.setTextColor(mTextIOInfo.getTextColor());
+        int textColor = mTextIOInfo.getTextColor();
+        mTextIOText.setTextColor(textColor != 0 ? textColor : ThemeUtils.getTextColorPrimary(this));
         mTextIOText.setTypeface(Typeface.create(mTextIOInfo.getTextTypeFaceFamily(), mTextIOInfo.getTextTypeFaceStyle()));
 
         // setTextIsSelectable must be called after changing KeyListener to regain focusability and selectivity

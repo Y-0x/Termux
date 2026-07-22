@@ -1,7 +1,6 @@
 package com.termux.app.terminal;
 
 import android.annotation.SuppressLint;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.text.SpannableString;
@@ -77,7 +76,7 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
             sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
         }
         int defaultColor = ThemeUtils.getTextColorPrimary(mActivity);
-        int color = sessionRunning || sessionAtRow.getExitStatus() == 0 ? defaultColor : Color.RED;
+        int color = sessionRunning || sessionAtRow.getExitStatus() == 0 ? defaultColor : ThemeUtils.getSystemAttrColor(mActivity, android.R.attr.colorError);
         sessionTitleView.setTextColor(color);
         return sessionRowView;
     }
