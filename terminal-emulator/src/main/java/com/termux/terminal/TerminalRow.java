@@ -319,7 +319,11 @@ public final class TerminalRow {
             if (w > 0) {
                 codePoints[col] = cp;
                 widths[col] = w;
-                col++;
+                if (w == 2 && col + 1 < columns) {
+                    codePoints[col + 1] = cp;
+                    widths[col + 1] = 0;
+                }
+                col += w;
                 i += charLen;
                 // Skip combining characters after base
                 while (i < spaceUsed) {

@@ -1065,6 +1065,7 @@ public final class TerminalView extends View {
         if (mEmulator == null) return visualColumn;
         TerminalBuffer screen = mEmulator.getScreen();
         if (screen == null) return visualColumn;
+        if (row < -screen.getActiveTranscriptRows() || row >= screen.getScreenRows()) return visualColumn;
         int internalRow = screen.externalToInternalRow(row);
         TerminalRow lineObject = screen.allocateFullLineIfNecessary(internalRow);
         return lineObject.visualToLogical(visualColumn);
@@ -1078,6 +1079,7 @@ public final class TerminalView extends View {
         if (mEmulator == null) return logicalColumn;
         TerminalBuffer screen = mEmulator.getScreen();
         if (screen == null) return logicalColumn;
+        if (row < -screen.getActiveTranscriptRows() || row >= screen.getScreenRows()) return logicalColumn;
         int internalRow = screen.externalToInternalRow(row);
         TerminalRow lineObject = screen.allocateFullLineIfNecessary(internalRow);
         return lineObject.logicalToVisual(logicalColumn);

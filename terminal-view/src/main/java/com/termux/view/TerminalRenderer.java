@@ -176,15 +176,147 @@ public final class TerminalRenderer {
             measuredWidthForRun, cursorColor, cursorShape, lastRunStyle, reverseVideo || invertCursorTextColor || lastRunInsideSelection);
     }
 
-    /** BiDi path: render a line with visual reordering. */
+    /** BiDi path: render a line with visual reordering. Draws runs as strings for proper shaping. */
     private void renderLineBiDi(Canvas canvas, char[] line, TerminalRow lineObject, int[] visualToLogical,
                                  int[] palette, float heightOffset, int columns, int cursorX, int cursorShape,
                                  int selx1, int selx2, int charsUsedInLine, boolean reverseVideo,
                                  TerminalEmulator emulator) {
-        // Build a mapping from logical column to char index
+        int[] logicalToCharIndex = buildLogicalToCharIndex(line, columns, charsUsedInLine);
+
+        int visualCol = 0;
+        while (visualCol < columns) {
+            int runStartVisual = visualCol;
+            int runStartLogical = visualToLogical[visualCol];
+            if (runStartLogical < 0 || runStartLogical >= columns) { visualCol++; continue; }
+            long runStyle = lineObject.getStyle(runStartLogical);
+
+            int runDirection = 0;
+            if (visualCol + 1 < columns) {
+                int nextLog = visualToLogical[visualCol + 1];
+                if (nextLog == runStartLogical + 1) runDirection = 1;
+                else if (nextLog == runStartLogical - 1) runDirection = -1;
+            }
+
+            visualCol++;
+            while (visualCol < columns) {
+                int log = visualToLogical[visualCol];
+                int prevLog = visualToLogical[visualCol - 1];
+                if (log < 0 || log >= columns) break;
+                long style = lineObject.getStyle(log);
+                if (style != runStyle) break;
+                boolean continues;
+                if (runDirection == 1) continues = (log == prevLog + 1);
+                else if (runDirection == -1) continues = (log == prevLog - 1);
+                else {
+                    if (log == prevLog + 1) { runDirection = 1; continues = true; }
+                    else if (log == prevLog - 1) { runDirection = -1; continues = true; }
+                    else continues = false;
+                }
+                if (!continues) break;
+                visualCol++;
+            }
+
+            int runEndVisual = visualCol;
+            int runEndLogical = visualToLogical[runEndVisual - 1];
+
+            int logMin = Math.min(runStartLogical, runEndLogical);
+            int logMax = Math.max(runStartLogical, runEndLogical);
+            int charStart = (logMin >= 0 && logMin <= columns) ? logicalToCharIndex[logMin] : 0;
+            int charEnd = (logMax + 1 >= 0 && logMax + 1 <= columns) ? logicalToCharIndex[logMax + 1] : charsUsedInLine;
+            while (charEnd < charsUsedInLine && WcWidth.width(line, charEnd) <= 0) {
+                charEnd += Character.isHighSurrogate(line[charEnd]) ? 2 : 1;
+            }
+
+            int numChars = charEnd - charStart;
+            if (numChars <= 0 || charStart >= charsUsedInLine) continue;
+
+            boolean isLtr = (runDirection >= 0);
+            int visualWidth = runEndVisual - runStartVisual;
+            float left = runStartVisual * mFontWidth;
+            float right = runEndVisual * mFontWidth;
+            float measuredWidth = mTextPaint.measureText(line, charStart, charEnd);
+
+            float mes = measuredWidth / mFontWidth;
+            boolean savedMatrix = false;
+            if (Math.abs(mes - visualWidth) > 0.01) {
+                canvas.save();
+                canvas.scale(visualWidth / mes, 1.f);
+                left *= mes / visualWidth;
+                right *= mes / visualWidth;
+                savedMatrix = true;
+            }
+
+            int foreColor = TextStyle.decodeForeColor(runStyle);
+            int backColor = TextStyle.decodeBackColor(runStyle);
+            int effect = TextStyle.decodeEffect(runStyle);
+            boolean bold = (effect & (TextStyle.CHARACTER_ATTRIBUTE_BOLD | TextStyle.CHARACTER_ATTRIBUTE_BLINK)) != 0;
+            boolean underline = (effect & TextStyle.CHARACTER_ATTRIBUTE_UNDERLINE) != 0;
+            boolean italic = (effect & TextStyle.CHARACTER_ATTRIBUTE_ITALIC) != 0;
+            boolean strikeThrough = (effect & TextStyle.CHARACTER_ATTRIBUTE_STRIKETHROUGH) != 0;
+            boolean dim = (effect & TextStyle.CHARACTER_ATTRIBUTE_DIM) != 0;
+
+            if ((foreColor & 0xff000000) != 0xff000000) {
+                if (bold && foreColor >= 0 && foreColor < 8) foreColor += 8;
+                foreColor = palette[foreColor];
+            }
+            if ((backColor & 0xff000000) != 0xff000000) {
+                backColor = palette[backColor];
+            }
+
+            boolean reverseVideoHere = reverseVideo ^ ((effect & TextStyle.CHARACTER_ATTRIBUTE_INVERSE) != 0);
+            if (reverseVideoHere) {
+                int tmp = foreColor; foreColor = backColor; backColor = tmp;
+            }
+
+            if (backColor != palette[TextStyle.COLOR_INDEX_BACKGROUND]) {
+                mTextPaint.setColor(backColor);
+                canvas.drawRect(left, heightOffset - mFontLineSpacingAndAscent + mFontAscent, right, heightOffset, mTextPaint);
+            }
+
+            boolean hasCursor = false;
+            for (int v = runStartVisual; v < runEndVisual; v++) {
+                int lc = visualToLogical[v];
+                if (lc >= 0 && lc < columns && (cursorX == lc || (cursorX == lc + 1 && WcWidth.width(line, logicalToCharIndex[lc]) == 2))) {
+                    hasCursor = true;
+                    break;
+                }
+            }
+            if (hasCursor) {
+                mTextPaint.setColor(palette[TextStyle.COLOR_INDEX_CURSOR]);
+                float cursorHeight = mFontLineSpacingAndAscent - mFontAscent;
+                if (cursorShape == TerminalEmulator.TERMINAL_CURSOR_STYLE_UNDERLINE) cursorHeight /= 4.f;
+                else if (cursorShape == TerminalEmulator.TERMINAL_CURSOR_STYLE_BAR) right -= ((right - left) * 3) / 4.f;
+                canvas.drawRect(left, heightOffset - cursorHeight, right, heightOffset, mTextPaint);
+            }
+
+            if ((effect & TextStyle.CHARACTER_ATTRIBUTE_INVISIBLE) == 0) {
+                if (dim) {
+                    int red = (0xFF & (foreColor >> 16)) * 2 / 3;
+                    int green = (0xFF & (foreColor >> 8)) * 2 / 3;
+                    int blue = (0xFF & foreColor) * 2 / 3;
+                    foreColor = 0xFF000000 + (red << 16) + (green << 8) + blue;
+                }
+
+                mTextPaint.setFakeBoldText(bold);
+                mTextPaint.setUnderlineText(underline);
+                mTextPaint.setTextSkewX(italic ? -0.35f : 0.f);
+                mTextPaint.setStrikeThruText(strikeThrough);
+                mTextPaint.setColor(foreColor);
+
+                float drawX = isLtr ? left : right;
+                canvas.drawTextRun(line, charStart, numChars, charStart, numChars,
+                    drawX, heightOffset - mFontLineSpacingAndAscent, !isLtr, mTextPaint);
+            }
+
+            if (savedMatrix) canvas.restore();
+        }
+    }
+
+    private int[] buildLogicalToCharIndex(char[] line, int columns, int charsUsedInLine) {
         int[] logicalToCharIndex = new int[columns + 1];
         int charIndex = 0;
-        for (int col = 0; col < columns && charIndex < charsUsedInLine; col++) {
+        int col = 0;
+        while (col < columns && charIndex < charsUsedInLine) {
             logicalToCharIndex[col] = charIndex;
             char c = line[charIndex];
             boolean isHigh = Character.isHighSurrogate(c);
@@ -192,132 +324,20 @@ public final class TerminalRenderer {
             int codePoint = isHigh ? Character.toCodePoint(c, line[charIndex + 1]) : c;
             int w = WcWidth.width(codePoint);
             charIndex += charsForCodePoint;
-            // Skip combining characters
             while (charIndex < charsUsedInLine && WcWidth.width(line, charIndex) <= 0) {
                 charIndex += Character.isHighSurrogate(line[charIndex]) ? 2 : 1;
             }
-            // If width was 2, the next logical column shares the same char index area
-            if (w == 2 && col + 1 < columns) {
-                logicalToCharIndex[col + 1] = logicalToCharIndex[col];
+            col++;
+            if (w == 2 && col < columns) {
+                logicalToCharIndex[col] = logicalToCharIndex[col - 1];
+                col++;
             }
         }
-        logicalToCharIndex[columns] = charsUsedInLine;
-
-        // Draw each visual position individually
-        for (int visualCol = 0; visualCol < columns; visualCol++) {
-            int logicalCol = visualToLogical[visualCol];
-            if (logicalCol < 0 || logicalCol >= columns) continue;
-
-            int startCharIdx = logicalToCharIndex[logicalCol];
-            if (startCharIdx >= charsUsedInLine) continue;
-
-            char charAtIndex = line[startCharIdx];
-            boolean isHigh = Character.isHighSurrogate(charAtIndex);
-            int charsForCodePoint = isHigh ? 2 : 1;
-            if (startCharIdx + charsForCodePoint > charsUsedInLine) continue;
-            int codePoint = isHigh ? Character.toCodePoint(charAtIndex, line[startCharIdx + 1]) : charAtIndex;
-            int codePointWcWidth = WcWidth.width(codePoint);
-
-            // Skip if this is the second half of a wide character
-            if (logicalCol > 0 && codePointWcWidth == 2) {
-                int prevStartChar = logicalToCharIndex[logicalCol - 1];
-                if (prevStartChar == startCharIdx) continue; // Same char as previous logical column — skip
-            }
-
-            long style = lineObject.getStyle(logicalCol);
-            boolean insideCursor = (cursorX == logicalCol || (codePointWcWidth == 2 && cursorX == logicalCol + 1));
-            boolean insideSelection = logicalCol >= selx1 && logicalCol <= selx2;
-
-            float measuredCodePointWidth = (codePoint < asciiMeasures.length) ? asciiMeasures[codePoint] : mTextPaint.measureText(line,
-                startCharIdx, charsForCodePoint);
-
-            int cursorColor = insideCursor ? emulator.mColors.mCurrentColors[TextStyle.COLOR_INDEX_CURSOR] : 0;
-            boolean invertCursorTextColor = insideCursor && cursorShape == TerminalEmulator.TERMINAL_CURSOR_STYLE_BLOCK;
-
-            drawTextRunSingleChar(canvas, line, palette, heightOffset, visualCol, codePointWcWidth,
-                startCharIdx, charsForCodePoint, measuredCodePointWidth,
-                cursorColor, cursorShape, style, reverseVideo || invertCursorTextColor || insideSelection);
+        while (col <= columns) {
+            logicalToCharIndex[col] = charsUsedInLine;
+            col++;
         }
-    }
-
-    /** Draw a single character at a specific visual column position. */
-    private void drawTextRunSingleChar(Canvas canvas, char[] text, int[] palette, float y, int visualColumn,
-                                       int charWidth, int startCharIndex, int numChars, float measuredWidth,
-                                       int cursor, int cursorStyle, long textStyle, boolean reverseVideo) {
-        int foreColor = TextStyle.decodeForeColor(textStyle);
-        final int effect = TextStyle.decodeEffect(textStyle);
-        int backColor = TextStyle.decodeBackColor(textStyle);
-        final boolean bold = (effect & (TextStyle.CHARACTER_ATTRIBUTE_BOLD | TextStyle.CHARACTER_ATTRIBUTE_BLINK)) != 0;
-        final boolean underline = (effect & TextStyle.CHARACTER_ATTRIBUTE_UNDERLINE) != 0;
-        final boolean italic = (effect & TextStyle.CHARACTER_ATTRIBUTE_ITALIC) != 0;
-        final boolean strikeThrough = (effect & TextStyle.CHARACTER_ATTRIBUTE_STRIKETHROUGH) != 0;
-        final boolean dim = (effect & TextStyle.CHARACTER_ATTRIBUTE_DIM) != 0;
-
-        if ((foreColor & 0xff000000) != 0xff000000) {
-            if (bold && foreColor >= 0 && foreColor < 8) foreColor += 8;
-            foreColor = palette[foreColor];
-        }
-
-        if ((backColor & 0xff000000) != 0xff000000) {
-            backColor = palette[backColor];
-        }
-
-        final boolean reverseVideoHere = reverseVideo ^ (effect & (TextStyle.CHARACTER_ATTRIBUTE_INVERSE)) != 0;
-        if (reverseVideoHere) {
-            int tmp = foreColor;
-            foreColor = backColor;
-            backColor = tmp;
-        }
-
-        float left = visualColumn * mFontWidth;
-        float right = left + charWidth * mFontWidth;
-
-        // Handle font width mismatch by scaling
-        float mesRatio = measuredWidth / mFontWidth;
-        boolean savedMatrix = false;
-        if (Math.abs(mesRatio - charWidth) > 0.01) {
-            canvas.save();
-            canvas.scale(charWidth / mesRatio, 1.f);
-            left *= mesRatio / charWidth;
-            right *= mesRatio / charWidth;
-            savedMatrix = true;
-        }
-
-        if (backColor != palette[TextStyle.COLOR_INDEX_BACKGROUND]) {
-            mTextPaint.setColor(backColor);
-            canvas.drawRect(left, y - mFontLineSpacingAndAscent + mFontAscent, right, y, mTextPaint);
-        }
-
-        if (cursor != 0) {
-            mTextPaint.setColor(cursor);
-            float cursorHeight = mFontLineSpacingAndAscent - mFontAscent;
-            if (cursorStyle == TerminalEmulator.TERMINAL_CURSOR_STYLE_UNDERLINE) cursorHeight /= 4.;
-            else if (cursorStyle == TerminalEmulator.TERMINAL_CURSOR_STYLE_BAR) right -= ((right - left) * 3) / 4.;
-            canvas.drawRect(left, y - cursorHeight, right, y, mTextPaint);
-        }
-
-        if ((effect & TextStyle.CHARACTER_ATTRIBUTE_INVISIBLE) == 0) {
-            if (dim) {
-                int red = (0xFF & (foreColor >> 16));
-                int green = (0xFF & (foreColor >> 8));
-                int blue = (0xFF & foreColor);
-                red = red * 2 / 3;
-                green = green * 2 / 3;
-                blue = blue * 2 / 3;
-                foreColor = 0xFF000000 + (red << 16) + (green << 8) + blue;
-            }
-
-            mTextPaint.setFakeBoldText(bold);
-            mTextPaint.setUnderlineText(underline);
-            mTextPaint.setTextSkewX(italic ? -0.35f : 0.f);
-            mTextPaint.setStrikeThruText(strikeThrough);
-            mTextPaint.setColor(foreColor);
-
-            canvas.drawTextRun(text, startCharIndex, numChars, startCharIndex, numChars,
-                left, y - mFontLineSpacingAndAscent, false, mTextPaint);
-        }
-
-        if (savedMatrix) canvas.restore();
+        return logicalToCharIndex;
     }
 
     private void drawTextRun(Canvas canvas, char[] text, int[] palette, float y, int startColumn, int runWidthColumns,
